@@ -903,6 +903,9 @@ importers:
 
   packages/narwallets:
     dependencies:
+      '@near-js/crypto':
+        specifier: ^2.3.0
+        version: 2.3.3(@near-js/types@2.3.0)(@near-js/utils@2.3.3(@near-js/types@2.3.0))
       '@near-wallet-selector/core':
         specifier: workspace:*
         version: link:../../dist/packages/core

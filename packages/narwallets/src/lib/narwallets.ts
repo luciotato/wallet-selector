@@ -6,8 +6,10 @@ import type {
   Account,
   Action,
   FinalExecutionOutcome,
+  SignedMessage,
 } from "@near-wallet-selector/core";
 import { najActionToInternal } from "@near-wallet-selector/core";
+import { PublicKey } from "@near-js/crypto";
 import icon from "./icon";
 
 declare global {
@@ -30,17 +32,28 @@ interface NarwalletsError {
   error: string | { type: string };
 }
 
+interface SignMessageRequest {
+  message: string;
+  recipient: string;
+  nonce: Array<number>;
+  callbackUrl?: string;
+  state?: string;
+  accountId?: string;
+}
+
 type Resolve =
   | string
   | boolean
   | FinalExecutionOutcome
   | Array<FinalExecutionOutcome>
-  | NarwalletsError;
+  | NarwalletsError
+  | SignedMessage;
 type NarwalletsFunctionParams =
   | undefined
   | boolean
   | SignAndSendTransactionParams
-  | Array<SignAndSendTransactionParams>;
+  | Array<SignAndSendTransactionParams>
+  | SignMessageRequest;
 
 interface PendingPromises {
   id_wallet_selector: number;
@@ -58,6 +71,7 @@ const NARWALLETS_CODES = {
   GET_ACCOUNT_ID: "get-account-id",
   SIGN_AND_SEND_TRANSACTION: "sign-and-send-transaction",
   SIGN_AND_SEND_TRANSACTIONS: "sign-and-send-transactions",
+  SIGN_MESSAGE: "sign-message",
 };
 
 let id = 0;
@@ -126,6 +140,24 @@ const callSignAndSendTransactions = (
     false,
     params
   );
+};
+
+const callSignMessage = (params: {
+  message: string;
+  recipient: string;
+  nonce: Uint8Array;
+  callbackUrl?: string;
+  state?: string;
+  accountId?: string;
+}): Promise<SignedMessage> => {
+  return sendToNarwallets(NARWALLETS_CODES.SIGN_MESSAGE, false, {
+    message: params.message,
+    recipient: params.recipient,
+    nonce: Array.from(params.nonce),
+    callbackUrl: params.callbackUrl,
+    state: params.state,
+    accountId: params.accountId,
+  }) as Promise<SignedMessage>;
 };
 
 const findPendingPromiseById = (
@@ -232,6 +264,18 @@ const Narwallets: WalletBehaviourFactory<InjectedWallet> = async ({
       throw new Error(`Method not supported by ${metadata.name}`);
     },
 
+    async signMessage(params) {
+      logger.log("Narwallets:signMessage", params);
+
+      const { accounts } = store.getState();
+
+      if (!accounts || accounts.length === 0) {
+        throw new Error("Wallet not signed in");
+      }
+
+      return callSignMessage(params);
+    },
+
     async signAndSendTransaction({ signerId, receiverId, actions }) {
       logger.log("signAndSendTransaction", { signerId, receiverId, actions });
 
@@ -301,7 +345,26 @@ const Narwallets: WalletBehaviourFactory<InjectedWallet> = async ({
         callbackUrl,
       });
 
-      throw new Error(`Method not supported by ${metadata.name}`);
+      const { accounts } = store.getState();
+
+      if (!accounts || accounts.length === 0) {
+        throw new Error("Wallet not signed in");
+      }
+
+      const signed = await callSignMessage({
+        message,
+        recipient,
+        nonce,
+        callbackUrl,
+        accountId,
+      });
+
+      return {
+        accountId: signed.accountId,
+        publicKey: PublicKey.from(signed.publicKey),
+        signature: Buffer.from(signed.signature, "base64"),
+        state: signed.state,
+      };
     },
 
     async signDelegateAction(delegateAction) {

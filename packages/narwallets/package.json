@@ -22,6 +22,7 @@
   },
   "homepage": "https://github.com/near/wallet-selector/tree/main/packages/narwallets",
   "dependencies": {
+    "@near-js/crypto": "^2.3.0",
     "@near-wallet-selector/core": "workspace:*",
     "is-mobile": "4.0.0"
   },

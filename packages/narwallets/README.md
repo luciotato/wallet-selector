@@ -31,6 +31,10 @@ const selector = await setupWalletSelector({
 });
 ```
 
+## Message signing
+
+`signMessage` and `signNep413Message` ask the extension to sign a [NEP-413](https://github.com/near/NEPs/blob/master/neps/nep-0413.md) message. The extension shows the message and signs it with the connected account. This requires Narwallets 4.0.16 or newer.
+
 ## Options
 
 - `iconUrl`: (`string?`): Image URL for the icon shown in the modal. This can also be a relative path or base64 encoded image. Defaults to `./assets/narwallets-logo.png`.
